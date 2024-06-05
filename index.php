@@ -26,7 +26,7 @@ if (isset($_POST['username'])){
 	$rows = mysqli_num_rows($result);
         if($rows==1){
 	    $_SESSION['username'] = $username;
-	    header("Location: start.php");
+	    header("Location: ./aicam/cloudcamera_ver2.html");
          }else{
 	echo "<div class='form'>
 <h3>Username/password is incorrect.</h3>

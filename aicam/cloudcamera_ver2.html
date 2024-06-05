@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>AI camera</title>
+        <link rel="stylesheet" href="styles.css">
+        <script src="https://kit.fontawesome.com/b6d949f337.js" crossorigin="anonymous"></script>
+    </head>
+<body>
+<div class="con">
+
+
+
+<h1>AI suspicious activity detector</h1>
+<p>Recognise Movement</p>
+
+<p id="output" class="window"></p>
+
+
+<div>  </div>
+<div class="btn-wrapper"><button type="button" id="start-stop-btn" onclick="handleButtonClick()">Start</button></div>
+<div><canvas id="my-canvas"></canvas></div>
+<div class="btn-wrap"></div>
+<div id="label-container"></div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+<script type="text/javascript">
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/pose
+
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "https://teachablemachine.withgoogle.com/models/jLeJTw1rQ/";
+    let model, webcam, ctx, labelContainer, maxPredictions;
+
+    async function init() {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+
+    // load the model and metadata
+    model = await tmPose.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    // Convenience function to setup a webcam
+    const size = 500;
+    const flip = true; // whether to flip the webcam
+    webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
+    await webcam.setup(); // request access to the webcam
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+
+    // append/get elements to the DOM
+    const canvas = document.getElementById("my-canvas");
+    canvas.width = webcam.canvas.width;
+    canvas.height = webcam.canvas.height;
+    ctx = canvas.getContext("2d");
+    labelContainer = document.getElementById("label-container");
+    for (let i = 0; i < maxPredictions; i++) { // and class labels
+        labelContainer.appendChild(document.createElement("div"));
+    }
+
+    // Update the "Start" button to "Stop" with a red background
+    const startStopBtn = document.getElementById("start-stop-btn");
+    startStopBtn.textContent = "Stop";
+    startStopBtn.style.backgroundColor = "red";
+    startStopBtn.style.color = "white";
+
+    // Create and append the fullscreen button
+    const fullscreenBtn = document.createElement("button");
+    fullscreenBtn.type = "button";
+    fullscreenBtn.onclick = toggleFullScreen;
+    fullscreenBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+    document.querySelector(".btn-wrap").appendChild(fullscreenBtn);
+}
+    async function loop(timestamp) {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        // Prediction #1: run input through posenet
+        // estimatePose can take in an image, video or canvas html element
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        // Prediction 2: run input through teachable machine classification model
+        const prediction = await model.predict(posenetOutput);
+
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+            if( (prediction[3].probability.toFixed(2)) >= 0.98 || (prediction[4].probability.toFixed(2)) >= 0.98 || (prediction[5].probability.toFixed(2))>= 0.98 || (prediction[6].probability.toFixed(2))>= 0.98 || (prediction[7].probability.toFixed(2))>= 0.98)
+            {
+             document.getElementById("output").innerHTML = "Suspicious activity";
+              var audio = new Audio("https://media.geeksforgeeks.org/wp-content/uploads/20190531135120/beep.mp3");
+              audio.play();
+            }else{
+                         document.getElementById("output").innerHTML = "Normal activity";
+
+            }
+           // document.getElementById("output").innerHTML = prediction[2].className + prediction[2].probability.toFixed(2);
+
+        }
+
+        // finally draw the poses
+        drawPose(pose);
+    }
+
+    function drawPose(pose) {
+        if (webcam.canvas) {
+            ctx.drawImage(webcam.canvas, 0, 0);
+            // draw the keypoints and skeleton
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+            }
+        }
+    }
+    function toggleFullScreen() {
+    const canvas = document.getElementById("my-canvas");
+    if (!document.fullscreenElement) {
+        canvas.requestFullscreen();
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
+let isStarted = false;
+
+function handleButtonClick() {
+    if (!isStarted) {
+        init();
+        isStarted = true;
+    } else {
+        location.reload();
+    }
+}
+</script>
+</body>
+</html>
